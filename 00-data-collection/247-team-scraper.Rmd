@@ -1,0 +1,43 @@
+---
+title: "247-team-scraper"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# Overview
+
+This notebook collects team names and links from the 247 teams page. The point of this data is to support offer scraping in future notebooks. The offer data will provide several metrics present within our commit likelihood model.
+
+# Data Collection
+
+Load relevant packages
+```{r warning = FALSE}
+library(tidyverse)
+library(rvest)
+```
+
+Read html from the url of interest
+```{r}
+page <- read_html("https://247sports.com/League/NCAA-FB/Teams/")
+```
+
+Get the html elements of interest and store in a dataframe
+```{r}
+teams <- page %>% html_elements(".division-team_lst a:nth-child(1)")
+link <- teams %>% html_attr("href")
+name <- teams %>% html_text()
+
+output <- cbind(link, name) %>% as.data.frame()
+```
+
+# Data Export
+
+Export the output dataframe to a csv file for later use
+```{r}
+path <- paste0(getwd(), "/data/")
+write_csv(output, file.path(path, "247-team.csv"))
+```
+
