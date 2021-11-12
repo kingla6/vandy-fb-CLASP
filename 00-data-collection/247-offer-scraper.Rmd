@@ -1,0 +1,178 @@
+---
+title: "247-offer-scraper"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# Overview
+
+# Data Collection
+
+Load relevant packages
+```{r}
+library(foreach)
+library(doParallel)
+library(tidyverse)
+library(rvest)
+library(assertr)
+```
+
+Set up parallelization
+```{r warning = FALSE}
+myCluster <- makeCluster(detectCores()-1, type = "PSOCK")
+registerDoParallel(myCluster)
+```
+
+Function to get info from school's offer page for a specific year
+```{r}
+page_info <- function(page){
+  #number of total offers for a school
+  n_offers <- page %>% html_node(".ri-page__heading span") %>% html_text() %>% gsub("[^0-9]", "", .) %>% as.numeric()
+  #players that are displayed
+  shown_players <- page %>% html_elements(".wrapper")
+  #links to display players which are hidden bc 247 sucks
+  hidden_position_links <- page %>% html_elements(".showmore_blk") %>% 
+    html_element("a") %>% html_attr("href")
+  
+  #clean up hidden position links
+  if(length(hidden_position_links) > 0){
+    hidden_position_links = hidden_position_links %>% str_replace_all(" ", "%20") %>% str_c("https://247sports.com", .)
+  }
+  
+  #save each element of the info page in a list
+  output <- list(n_offers, shown_players, hidden_position_links)
+  
+  #return the output list
+  return(output)
+}
+```
+
+
+Function to get player info into a clean dataframe
+```{r}
+offer_metrics <- function(players){
+  #player url
+  link <- players %>% html_element("a") %>% html_attr("href") %>% str_c("https:", .)
+  #player name
+  name <- players %>% html_element("a") %>% html_text()
+  #player school and city
+  school_city <- players %>% html_element("span") %>% html_text(trim = T)
+  #player position
+  position <- players %>% html_element(css = "[class = position]") %>% html_text(trim = T)
+  #player height and weight
+  height_weight <- players %>% html_element(css = "[class = metrics]") %>% html_text(trim = T)
+  #number of stars
+  stars <- players %>% html_element(css = "[class = ri-page__star-and-score]") %>% 
+    sapply(function(element){element %>% str_count("yellow")}) %>% suppressWarnings()
+  #composite rating
+  composite_rating <- players %>% html_element(css = "[class = ri-page__star-and-score]") %>% html_text(trim = T)
+  #national rank
+  national_rank <- players %>% html_nodes("a.natrank") %>% html_text()
+  #position rank
+  position_rank <- players %>% html_nodes("a.posrank") %>% html_text()
+  #state rank
+  state_rank <- players %>% html_nodes("a.sttrank") %>% html_text()
+  #school that player ended up committing to
+  final_commit <- players %>% html_nodes("div.status") %>% html_element("a") %>% html_element("img") %>% html_attr("alt")
+  #combine all player info into dataframe
+  offer_metrics_df <- cbind(link, name, school_city, position, height_weight, 
+                            stars, composite_rating, 
+                            national_rank, position_rank, state_rank, final_commit) %>% as.data.frame()
+  #return output dataframe
+  return(offer_metrics_df)
+}
+```
+
+Function to combine data for all shown and hidden players
+```{r}
+page_data <- function(page_info, year){
+  
+  #exit function if no offers in the given year
+  stopifnot(page_info[[1]] > 0)
+  
+  #player data for shown players into dataframe
+  offer_df <- offer_metrics(page_info[[2]])
+  
+  #player data for hidden players appended to created dataframe
+  for(i in page_info[[3]]) {
+    hidden_players <- read_html(i) %>% html_elements(".wrapper")
+    offer_df <- rbind(offer_df, offer_metrics(hidden_players))
+  }
+  
+  #return dataframe and verify that the number of players equals the number of offers displayed on the page
+  return(offer_df %>% verify(nrow(.) == page_info[[1]]) %>% mutate(year = year) %>% 
+    select(year, everything()))
+}
+```
+
+Function to get offer data for all years for a single team
+```{r}
+team_data <- function(teams, t, years) {
+  #initialize the current team link
+  team_link <- teams$link[t]
+  #initialize the current team name
+  team_name <- teams$name[t]
+  #initialize empty df for all offers
+  school_df <- data.frame()
+
+  #loop over years
+  for (i in years) {
+  
+    # initialize url, try to access the page
+    url <- paste0(team_link, "Season/", i, "-Football/Offers/")
+    #read the page html
+    page <- read_html(url)
+    #skip to next year if page does not exist
+    if (is.na(page)) {next}
+    #set variable to skip to next year for error handling
+    skip_to_next <- F
+    #tryCatch handler to get offer data for that year or skip to next iteration if an error is encountered 
+    #(ie no offers that year, invalid url, etc.)
+    output <- tryCatch(page_data(page_info(page), i), error = function(e) {skip_to_next <<- T})
+    #skip to next iteration if there is an error
+    if (skip_to_next==T) {next}
+    #append results to previously initialized df for school
+    school_df <- rbind(school_df, output)
+  }
+  #rework column names and order for output df
+  school_df <- school_df %>% mutate(school = team_name) %>% select(school, everything())
+  #return output df
+  return(school_df)
+}
+```
+
+Parallel implementation with time check
+```{r}
+#system time records the amount of time it takes to run
+system.time({
+  #initialize teams and years to be included
+  teams <- read_csv("data/247-team.csv")
+  years <- 1999:2021
+  #run loop parallelized on several clusters and save into dataframe
+  all_df <- foreach (t = 1:nrow(teams), .combine = "rbind", .packages = c("tidyverse", "rvest", "assertr")) %dopar%
+    team_data(teams = teams, t = t, years = years)  
+})
+```
+
+# Post-Data Collection Investigation and Cleaning
+
+Display teams that we don't have offers for. Upon closer inspection, 247 does not list a unique team link for these schools.
+```{r}
+data.frame(teams$name) %>% anti_join(data.frame(all_df$school), by = c("teams.name"="all_df.school"))
+```
+
+Save output file (full data cleaning is outside of the scope of this document)
+```{r}
+output <- all_df %>% rename(offer = school, class = year) %>% select(link, everything())
+```
+
+# Data Export
+
+Export the output dataframe to a csv file for later use
+```{r}
+path <- paste0(getwd(), "/data/")
+write_csv(output, file.path(path, "247-team-offer.csv"))
+```
