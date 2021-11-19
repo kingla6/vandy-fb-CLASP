@@ -170,6 +170,7 @@ pre code {
 
 <div id="overview" class="section level1">
 <h1>Overview</h1>
+<p>This notebook collects offer data from the 247 team offers pages. The point of this data is to support offer scraping in future notebooks. The offer data will provide several metrics present within our commit likelihood model.</p>
 </div>
 <div id="data-collection" class="section level1">
 <h1>Data Collection</h1>
@@ -234,10 +235,13 @@ registerDoParallel(myCluster)</code></pre>
   state_rank &lt;- players %&gt;% html_nodes(&quot;a.sttrank&quot;) %&gt;% html_text()
   #school that player ended up committing to
   final_commit &lt;- players %&gt;% html_nodes(&quot;div.status&quot;) %&gt;% html_element(&quot;a&quot;) %&gt;% html_element(&quot;img&quot;) %&gt;% html_attr(&quot;alt&quot;)
+  #image for school that player ended up committing to
+  final_commit_image &lt;- players %&gt;% html_elements(&quot;div.status&quot;) %&gt;% html_element(&quot;img&quot;) %&gt;% html_attr(&quot;data-src&quot;) %&gt;% 
+    str_split(&quot;\\?&quot;) %&gt;% lapply(`[`, 1) %&gt;% unlist()
   #combine all player info into dataframe
   offer_metrics_df &lt;- cbind(link, name, school_city, position, height_weight, 
                             stars, composite_rating, 
-                            national_rank, position_rank, state_rank, final_commit) %&gt;% as.data.frame()
+                            national_rank, position_rank, state_rank, final_commit, final_commit_image) %&gt;% as.data.frame()
   #return output dataframe
   return(offer_metrics_df)
 }</code></pre>
@@ -304,7 +308,7 @@ system.time({
     team_data(teams = teams, t = t, years = years)  
 })</code></pre>
 <pre><code>##    user  system elapsed 
-##    2.31    0.35 1385.60</code></pre>
+##    4.35    0.53 1274.94</code></pre>
 </div>
 <div id="post-data-collection-investigation-and-cleaning" class="section level1">
 <h1>Post-Data Collection Investigation and Cleaning</h1>
@@ -314,7 +318,10 @@ system.time({
 ## 1            LIU Post Sharks
 ## 2 Abilene Christian Wildcats</code></pre>
 <p>Save output file (full data cleaning is outside of the scope of this document)</p>
-<pre class="r"><code>output &lt;- all_df %&gt;% rename(offer = school, class = year) %&gt;% select(link, everything())</code></pre>
+<pre class="r"><code>output &lt;- all_df %&gt;% 
+  mutate(final_commit_image = ifelse(final_commit_image==&quot;&quot;, NA, final_commit_image)) %&gt;% 
+  rename(offer = school, class = year) %&gt;% 
+  select(link, everything())</code></pre>
 </div>
 <div id="data-export" class="section level1">
 <h1>Data Export</h1>

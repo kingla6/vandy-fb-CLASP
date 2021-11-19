@@ -9,6 +9,8 @@ knitr::opts_chunk$set(message = FALSE)
 
 # Overview
 
+This notebook collects offer data from the 247 team offers pages. The point of this data is to support offer scraping in future notebooks. The offer data will provide several metrics present within our commit likelihood model.
+
 # Data Collection
 
 Load relevant packages
@@ -77,10 +79,13 @@ offer_metrics <- function(players){
   state_rank <- players %>% html_nodes("a.sttrank") %>% html_text()
   #school that player ended up committing to
   final_commit <- players %>% html_nodes("div.status") %>% html_element("a") %>% html_element("img") %>% html_attr("alt")
+  #image for school that player ended up committing to
+  final_commit_image <- players %>% html_elements("div.status") %>% html_element("img") %>% html_attr("data-src") %>% 
+    str_split("\\?") %>% lapply(`[`, 1) %>% unlist()
   #combine all player info into dataframe
   offer_metrics_df <- cbind(link, name, school_city, position, height_weight, 
                             stars, composite_rating, 
-                            national_rank, position_rank, state_rank, final_commit) %>% as.data.frame()
+                            national_rank, position_rank, state_rank, final_commit, final_commit_image) %>% as.data.frame()
   #return output dataframe
   return(offer_metrics_df)
 }
@@ -166,7 +171,10 @@ data.frame(teams$name) %>% anti_join(data.frame(all_df$school), by = c("teams.na
 
 Save output file (full data cleaning is outside of the scope of this document)
 ```{r}
-output <- all_df %>% rename(offer = school, class = year) %>% select(link, everything())
+output <- all_df %>% 
+  mutate(final_commit_image = ifelse(final_commit_image=="", NA, final_commit_image)) %>% 
+  rename(offer = school, class = year) %>% 
+  select(link, everything())
 ```
 
 # Data Export
