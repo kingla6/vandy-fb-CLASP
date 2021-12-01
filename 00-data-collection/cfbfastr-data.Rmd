@@ -1,0 +1,139 @@
+---
+title: "cfbfastr-data"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# Overview
+
+# Data Collection & Storage
+
+Load relevant packages
+```{r}
+library(foreach)
+library(doParallel)
+library(tidyverse)
+library(cfbfastR)
+```
+
+Set up parallelization
+```{r warning = FALSE}
+myCluster <- makeCluster(detectCores()-1, type = "PSOCK")
+registerDoParallel(myCluster)
+```
+
+Initialize filepath for csv storage
+```{r}
+path <- paste0(getwd(), "/data/")
+```
+
+Function to export all generated datasets
+```{r}
+export_data <- function(dataset, filepath = path) {
+  # save dataset name as a string to be used in the file name
+  variable_name <- deparse(substitute(dataset))
+  # generate the full file name
+  file_name <- paste0("cfbscrapr-", variable_name, ".csv") %>% gsub("_", "-", .)
+  # write the csv
+  write.csv(dataset, file.path(path, file_name), row.names = F)
+}
+```
+
+Recruiting Rankings
+```{r}
+system.time({
+  # initialize the years to be looped over
+  years <- 2000:2020
+
+  # run loop parallelized on several clusters and save into dataframe
+  recruiting_rankings <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
+    cfbd_recruiting_team(year = y)
+  
+  # export dataset
+  export_data(recruiting_rankings)
+})
+```
+
+Team/Conference/Stadium Info
+```{r}
+system.time({
+  # initialize the years to be looped over
+  years <- 2000:2020
+
+  # run loop parallelized on several clusters and save into dataframe
+  team_info <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
+    cbind(y, cfbd_team_info(year = y)) %>% as.data.frame() %>% rename(year = y) %>% select(-logos)
+  
+  # export dataset
+  export_data(team_info) 
+})
+```
+
+Conference Info
+```{r}
+conference_info <- cfbd_conferences()
+
+# export dataset
+export_data(conference_info)
+```
+
+More Stadium Info
+```{r}
+stadium_info <- cfbd_venues()
+
+# export dataset
+export_data(stadium_info)
+```
+
+Pre/postseason rankings
+```{r}
+system.time({
+  # initialize the years to be looped over
+  years <- 2000:2020
+
+  # run loop parallelized on several clusters and save into dataframe
+  season_rankings <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
+    cfbd_rankings(y)
+  
+  # export dataset
+  export_data(season_rankings)
+})
+```
+
+Team Records
+```{r}
+system.time({
+  # initialize the years to be looped over
+  years <- 2000:2020
+
+  # run loop parallelized on several clusters and save into dataframe
+  team_records <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
+    cfbd_game_records(y)
+
+  # export dataset
+  export_data(team_records)    
+})
+```
+
+Draft Info
+```{r}
+system.time({
+  # initialize the years to be looped over
+  years <- 2000:2020
+
+  # run loop parallelized on several clusters and save into dataframe
+  draft_picks <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
+    cfbd_draft_picks(y)
+  
+  # export dataset
+  export_data(draft_picks) 
+})
+```
+
+Stop cluster
+```{r}
+stopCluster(myCluster)
+```

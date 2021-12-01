@@ -1,0 +1,95 @@
+"conference_id","name","long_name","abbreviation","classification"
+1,"ACC","Atlantic Coast Conference","ACC","fbs"
+4,"Big 12","Big 12 Conference","B12","fbs"
+5,"Big Ten","Big Ten Conference","B1G","fbs"
+8,"SEC","Southeastern Conference","SEC","fbs"
+9,"Pac-12","Pac-12 Conference","PAC","fbs"
+12,"Conference USA","Conference USA","CUSA","fbs"
+15,"Mid-American","Mid-American Conference","MAC","fbs"
+17,"Mountain West","Mountain West Conference","MWC","fbs"
+18,"FBS Independents","FBS Independents","Ind","fbs"
+20,"Big Sky","Big Sky Conference",NA,"fcs"
+21,"MVFC","Missouri Valley Football Conference",NA,"fcs"
+22,"Ivy","Ivy League",NA,"fcs"
+24,"MEAC","Mid-Eastern Athletic Conference",NA,"fcs"
+25,"NEC","Northeast Conference",NA,"fcs"
+26,"OVC","Ohio Valley Conference",NA,"fcs"
+27,"Patriot","Patriot League",NA,"fcs"
+28,"Pioneer","Pioneer Football League",NA,"fcs"
+29,"Southern","Southern Conference",NA,"fcs"
+30,"Southland","Southland Conference",NA,"fcs"
+31,"SWAC","Southwestern Athletic Conference",NA,"fcs"
+37,"Sun Belt","Sun Belt Conference","SBC","fbs"
+40,"Big South","Big South Conference",NA,"fcs"
+48,"CAA","Colonial Athletic Association",NA,"fcs"
+100,"American Southwest","American Southwest",NA,"iii"
+102,"CCIW","CCIW",NA,"iii"
+103,"Centennial","Centennial",NA,"iii"
+104,"CIAA","CIAA",NA,"ii"
+105,"ECFC","ECFC",NA,"iii"
+106,"Empire 8","Empire 8",NA,"iii"
+107,"GLIAC","GLIAC",NA,"ii"
+108,"Great Lakes","Great Lakes",NA,"ii"
+109,"Great Northwest","Great Northwest",NA,"ii"
+110,"Gulf South","Gulf South",NA,"ii"
+111,"Heartland","Heartland",NA,"iii"
+112,"Independent DII","Independent DII",NA,"ii"
+113,"Independent DIII","Independent DIII",NA,"iii"
+114,"American Rivers","American Rivers Conference",NA,"iii"
+115,"Liberty League","Liberty League",NA,"iii"
+116,"Lone Star","Lone Star",NA,"ii"
+117,"Michigan","Michigan",NA,"iii"
+118,"Mid America","Mid America",NA,"ii"
+119,"Mid Atlantic","Middle Atlantic Conference",NA,"iii"
+120,"Midwest","Midwest",NA,"iii"
+121,"Minnesota","Minnesota",NA,"iii"
+122,"NESCAC","NESCAC",NA,"iii"
+123,"Commonwealth Coast","Commonwealth Coast Conference",NA,"iii"
+124,"New Jersey","New Jersey",NA,"iii"
+126,"North Coast","North Coast",NA,"iii"
+127,"Northeast 10","Northeast 10",NA,"ii"
+128,"NACC","Northern Athletics Collegiate Conference",NA,"iii"
+129,"Northern Sun","Northern Sun",NA,"ii"
+130,"Northwest","Northwest",NA,"iii"
+131,"Ohio","Ohio",NA,"iii"
+132,"Old Dominion","Old Dominion",NA,"iii"
+133,"Pennsylvania State Athletic","Pennsylvania State Athletic Conference",NA,"ii"
+134,"Presidents'","Presidents'",NA,"iii"
+135,"Rocky Mountain","Rocky Mountain",NA,"ii"
+136,"SIAC","SIAC",NA,"ii"
+138,"So. Cal.","So. Cal.",NA,"iii"
+139,"South Atlantic","South Atlantic",NA,"ii"
+142,"Upper Midwest","Upper Midwest",NA,"iii"
+143,"USA South","USA South",NA,"iii"
+144,"Mountain East","Mountain East Conference",NA,"ii"
+145,"Wisconsin","Wisconsin",NA,"iii"
+146,"Great American","Great American Conference",NA,"ii"
+147,"Southern Athletic","Southern Athletic Association",NA,"iii"
+151,"American Athletic","American Athletic Conference","AAC","fbs"
+160,"MSCAC","Massachusetts State Collegiate Athletic Conference",NA,"iii"
+165,"Great Midwest Athletic","Great Midwest Athletic Conference",NA,"ii"
+166,"NEWMAC","New England Women's and Men's Athletic Conference",NA,"iii"
+175,"AWC","ASUN-WAC Challenge",NA,"fcs"
+201,"Western","Western Conference","Western",NA
+202,"Missouri Valley","Missouri Valley Intercollegiate Athletic Association","MVIAA",NA
+203,"Rocky Mountain","Rocky Mountain Conference","RMC",NA
+204,"Southwest","Southwest Conference","SWC",NA
+205,"Pacific","Pacific Coast Conference","PCC",NA
+206,"Southern","Southern Conference","Southern",NA
+207,"Big 6","Big 6 Conference","Big 6",NA
+208,"Missouri Valley","Missouri Valley Conference","MVC",NA
+209,"Mountain State","Mountain State Athletic Conference","MSAC",NA
+210,"Big 7","Big 7 Conference","Big 7",NA
+211,"Skyline","Skyline Conference","Skyline",NA
+212,"Ivy","The Ivy League","Ivy",NA
+213,"AAWU","Athletic Association of Western Universities","AAWU",NA
+214,"Big 8","Big 8 Conference","Big 8",NA
+215,"Western Athletic","Western Athletic Conference","WAC",NA
+216,"Pac-8","Pacific 8 Conference","Pac-8",NA
+217,"PCAA","Pacific Coast Athletic Association","PCAA",NA
+218,"Southland","Southland Conference","Southland",NA
+219,"SWAC","Southwest Athletic Conference","SWAC",NA
+220,"Pac-10","Pacific 10","Pac-10","fbs"
+221,"Big West","Big West Conference","BW",NA
+222,"Big East","Big East Conference","BE","fbs"
+223,"Border","Border Intercollegiate Athletic Association","BIAA",NA
