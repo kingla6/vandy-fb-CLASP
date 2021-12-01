@@ -162,6 +162,11 @@ system.time({
 })
 ```
 
+Stop cluster
+```{r}
+stopCluster(myCluster)
+```
+
 # Post-Data Collection Investigation and Cleaning
 
 Display teams that we don't have offers for. Upon closer inspection, 247 does not list a unique team link for these schools.
