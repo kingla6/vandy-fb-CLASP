@@ -9,6 +9,8 @@ knitr::opts_chunk$set(message = FALSE)
 
 # Overview
 
+This notebook collects various datasets available via the cfbscrapR package. Data included: conference info, draft picks, recruiting rankings, season rankings, stadium info, team info, and team records. This data will support features in our commit likelihood modeling dataset.
+
 # Data Collection & Storage
 
 Load relevant packages
@@ -36,18 +38,20 @@ export_data <- function(dataset, filepath = path) {
   # save dataset name as a string to be used in the file name
   variable_name <- deparse(substitute(dataset))
   # generate the full file name
-  file_name <- paste0("cfbscrapr-", variable_name, ".csv") %>% gsub("_", "-", .)
+  file_name <- paste0("cfbfastr-", variable_name, ".csv") %>% gsub("_", "-", .)
   # write the csv
   write.csv(dataset, file.path(path, file_name), row.names = F)
 }
 ```
 
+Initialize the years to be looped over
+```{r}
+years <- 2000:2020
+```
+
 Recruiting Rankings
 ```{r}
 system.time({
-  # initialize the years to be looped over
-  years <- 2000:2020
-
   # run loop parallelized on several clusters and save into dataframe
   recruiting_rankings <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
     cfbd_recruiting_team(year = y)
@@ -60,9 +64,6 @@ system.time({
 Team/Conference/Stadium Info
 ```{r}
 system.time({
-  # initialize the years to be looped over
-  years <- 2000:2020
-
   # run loop parallelized on several clusters and save into dataframe
   team_info <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
     cbind(y, cfbd_team_info(year = y)) %>% as.data.frame() %>% rename(year = y) %>% select(-logos)
@@ -91,9 +92,6 @@ export_data(stadium_info)
 Pre/postseason rankings
 ```{r}
 system.time({
-  # initialize the years to be looped over
-  years <- 2000:2020
-
   # run loop parallelized on several clusters and save into dataframe
   season_rankings <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
     cfbd_rankings(y)
@@ -106,9 +104,6 @@ system.time({
 Team Records
 ```{r}
 system.time({
-  # initialize the years to be looped over
-  years <- 2000:2020
-
   # run loop parallelized on several clusters and save into dataframe
   team_records <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
     cfbd_game_records(y)
@@ -121,9 +116,6 @@ system.time({
 Draft Info
 ```{r}
 system.time({
-  # initialize the years to be looped over
-  years <- 2000:2020
-
   # run loop parallelized on several clusters and save into dataframe
   draft_picks <- foreach (y = years, .combine = "rbind", .packages = c("tidyverse", "cfbfastR")) %dopar%
     cfbd_draft_picks(y)
