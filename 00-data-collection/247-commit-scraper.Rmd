@@ -1,0 +1,260 @@
+---
+title: "247-commit-scraper"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# Overview
+
+This notebook collects commit data from the 247 team commit pages. The commit data will provide several metrics present within our commit likelihood model.
+
+# Data Collection
+
+Load relevant packages
+```{r}
+library(foreach)
+library(doParallel)
+library(tidyverse)
+library(rvest)
+library(assertr)
+```
+
+Set up parallelization
+```{r warning = FALSE}
+myCluster <- makeCluster(detectCores()-1, type = "PSOCK")
+registerDoParallel(myCluster)
+```
+
+Function to get info from school's commit page for a specific year
+```{r}
+page_info <- function(page){
+  #number of total commits for a school
+  n_commits <- page %>% html_node(".ri-page__heading span") %>% html_text() %>% gsub("[^0-9]", "", .) %>% 
+    as.numeric() %>% ifelse(is.na(.), 0, .)
+  #number of total transfers for a school
+  n_transfers <- page %>% html_element(".portal-list_itm .name") %>% html_text() %>% gsub("[^0-9]", "", .) %>% 
+    as.numeric() %>% ifelse(is.na(.), 0, .)
+  #commit player data
+  commits <- page %>% html_elements(".wrapper")
+  #transfer player data
+  transfers <- page %>% html_elements(".portal-list_itm+ .portal-list_itm , .list-header+ .portal-list_itm")
+  #save each element of the info page in a list
+  output <- list(n_commits, commits, n_transfers, transfers)
+  
+  #return the output list
+  return(output)
+}
+```
+
+Function to get commit info into a clean dataframe
+```{r}
+commit_metrics <- function(commits){
+  #player url
+  link <- commits %>% html_element("a") %>% html_attr("href") %>% str_c("https:", .)
+  #player name
+  name <- commits %>% html_element("a") %>% html_text()
+  #player school and city
+  school_city <- commits %>% html_element("span") %>% html_text(trim = T)
+  #player position
+  position <- commits %>% html_element(css = "[class = position]") %>% html_text(trim = T)
+  #player height and weight
+  height_weight <- commits %>% html_element(css = "[class = metrics]") %>% html_text(trim = T)
+  #number of stars
+  stars <- commits %>% html_element(css = "[class = ri-page__star-and-score]") %>% 
+    sapply(function(element){element %>% str_count("yellow")}) %>% suppressWarnings()
+  #composite rating
+  composite_rating <- commits %>% html_element(css = "[class = ri-page__star-and-score]") %>% html_text(trim = T)
+  #national rank
+  national_rank <- commits %>% html_nodes("a.natrank") %>% html_text()
+  #position rank
+  position_rank <- commits %>% html_nodes("a.posrank") %>% html_text()
+  #state rank
+  state_rank <- commits %>% html_nodes("a.sttrank") %>% html_text()
+  #school that player ended up committing to
+  status <- commits %>% html_nodes("div.status") %>% html_element("p.commit-date") %>% html_text(trim = T)
+  #player level
+  player_level <- rep("commit", length(commits))
+  #combine all player info into dataframe
+  commit_metrics_df <- cbind(link, name, school_city, position, height_weight, 
+                             stars, composite_rating, 
+                             national_rank, position_rank, state_rank, status, player_level) %>% as.data.frame()
+  #return output dataframe
+  return(commit_metrics_df)
+}
+```
+
+Function to get transfer info into a clean dataframe
+```{r}
+transfer_metrics <- function(transfers){
+  #player url
+  link <- transfers %>% html_element("a") %>% html_attr("href")
+  #player name
+  name <- transfers %>% html_element("a") %>% html_text()
+  #player position
+  position <- transfers %>% html_element(css = "[class = position]") %>% html_text(trim = T)
+  #player height and weight
+  height_weight <- transfers %>% html_nodes("div.metrics") %>% html_text(trim = T)
+  #number of stars
+  stars <- transfers %>% html_element("div.rating") %>% html_element("span") %>% 
+    sapply(function(element){element %>% str_count("yellow")}) %>% suppressWarnings()
+  #composite rating
+  composite_rating <- transfers %>% html_element("div.rating") %>% html_element("span") %>% 
+    html_element("span.score") %>% html_text() %>% str_split(" ") %>% lapply(`[`, 1) %>% unlist()
+  #rating level (HS/College)
+  rating_level <- transfers %>% html_element("div.rating") %>% html_element("span") %>% 
+    html_element("span.score") %>% html_text() %>% str_split(" ") %>% lapply(`[`, 2) %>% unlist() %>% 
+    gsub("[^[:alnum:] ]", "", .)
+  #eligibility
+  eligibility <- transfers %>% html_element("div.eligibility") %>% html_text(trim = T)
+  #former school
+  former_school <- transfers %>% html_elements("div.transfer-institution") %>% html_element("img") %>% html_attr("alt")
+  #former school link
+  former_school_link <- transfers %>% html_elements("div.transfer-institution") %>% html_element("img") %>% 
+    html_attr("src") %>% str_split("\\?") %>% lapply(`[`, 1) %>% unlist()
+  #player level
+  player_level <- rep("transfer", length(transfers))
+  #combine all player info into dataframe
+  transfer_metrics_df <- cbind(link, name, position, height_weight,
+                               stars, composite_rating, rating_level,
+                               eligibility, former_school, former_school_link, player_level) %>% as.data.frame()
+  #return output dataframe
+  return(transfer_metrics_df)
+}
+```
+
+Initial framework for grabbing both ratings for transfer players (we stuck with most recent for simplicity's sake)
+If used, would be included within the transfer_metrics function
+```{r}
+# transfer_rating <- transfers %>% html_element("div.rating") %>% html_elements("span")
+# 
+# transfers %>% html_element("div.rating") %>% html_element("span") %>% 
+#   sapply(function(element){element %>% str_count("yellow")}) %>% suppressWarnings()
+# 
+# transfers %>% html_element("div.rating") %>% 
+#   sapply(function(element){element %>% str_count("span")/16}) %>% suppressWarnings() %>% cumsum()
+# 
+# transfer_rating[seq(1, length(transfer_rating), 8)] %>% 
+#   sapply(function(element){element %>% str_count("yellow")}) %>% suppressWarnings()
+# transfer_rating[seq(1, length(transfer_rating), 8)] %>% html_element("span.score") %>% html_text() %>% 
+#   str_split(" ") %>% lapply(`[`, 1) %>% unlist()
+# transfer_rating[seq(1, length(transfer_rating), 8)] %>% html_element("span.score") %>% html_text() %>% 
+#   str_split(" ") %>% lapply(`[`, 2) %>% unlist() %>% gsub("[^[:alnum:] ]", "", .)
+```
+
+Function to merge commit and transfer data 
+```{r}
+data_merge <- function(commit_data, transfer_data, relevant_cols) {
+  #stack the commit and transfer data only storing the relevant columns
+  output <- rbind(commit_data[,relevant_cols], transfer_data[,relevant_cols]) %>% as.data.frame()
+  #return the output dataframe
+  return(output)
+}
+```
+
+Function to combine data for all shown and hidden players
+```{r}
+page_data <- function(page_info, year, relevant_cols = c("link", "position", "stars", "composite_rating", "player_level")){
+  
+  #exit function if no commits/transfers in the given year
+  stopifnot(page_info[[1]] + page_info[[3]] > 0)
+  
+  #create dataframe for both commits and transfers, if/else allows for error handling of empty dataframes for either one
+  if(page_info[[1]]==0) {
+    all_commits <- transfer_metrics(page_info[[4]])[,relevant_cols]
+    } else if(page_info[[3]]==0) {
+    all_commits <- commit_metrics(page_info[[2]])[,relevant_cols]
+    } else {
+    all_commits <- data_merge(commit_data = commit_metrics(page_info[[2]]), 
+                              transfer_data = transfer_metrics(page_info[[4]]), 
+                              relevant_cols)
+  }
+  
+  #verify the number of total commits matches scraped data, append column for year, save as output dataframe
+  output <- all_commits %>% verify(nrow(.) == page_info[[1]] + page_info[[3]]) %>% mutate(year = year) %>% 
+    select(year, everything())
+  
+  #return output
+  return(output)
+}
+```
+
+Function to get commit data for all years for a single team
+```{r}
+team_data <- function(teams, t, years) {
+  #initialize the current team link
+  team_link <- teams$link[t]
+  #initialize the current team name
+  team_name <- teams$name[t]
+  #initialize empty df for all commits
+  school_df <- data.frame()
+
+  #loop over years
+  for (i in years) {
+  
+    # initialize url, try to access the page
+    url <- paste0(team_link, "Season/", i, "-Football/Commits/")
+    #read the page html
+    page <- read_html(url)
+    #skip to next year if page does not exist
+    if (is.na(page)) {next}
+    #set variable to skip to next year for error handling
+    skip_to_next <- F
+    #tryCatch handler to get commit data for that year or skip to next iteration if an error is encountered 
+    #(ie no commits that year, invalid url, etc.)
+    output <- tryCatch(page_data(page_info(page), i), error = function(e) {skip_to_next <<- T})
+    #skip to next iteration if there is an error
+    if (skip_to_next==T) {next}
+    #append results to previously initialized df for school
+    school_df <- rbind(school_df, output)
+  }
+  #rework column names and order for output df
+  school_df <- school_df %>% mutate(school = team_name) %>% select(school, everything())
+  #return output df
+  return(school_df)
+}
+```
+
+Parallel implementation with time check
+```{r}
+#system time records the amount of time it takes to run
+system.time({
+  #initialize teams and years to be included
+  teams <- read_csv("data/247-team.csv")
+  years <- 1999:2021
+  #run loop parallelized on several clusters and save into dataframe
+  all_df <- foreach (t = 1:nrow(teams), .combine = "rbind", .packages = c("tidyverse", "rvest", "assertr")) %dopar%
+    team_data(teams = teams, t = t, years = years)  
+})
+```
+
+Stop cluster
+```{r}
+stopCluster(myCluster)
+```
+
+
+# Post-Data Collection Investigation and Cleaning
+
+Display teams that we don't have commits for. Upon closer inspection, 247 does not list a unique team link for these schools.
+```{r}
+data.frame(teams$name) %>% anti_join(data.frame(all_df$school), by = c("teams.name"="all_df.school"))
+```
+
+Save output file (full data cleaning is outside of the scope of this document)
+```{r}
+output <- all_df %>% 
+  mutate(composite_rating = ifelse(composite_rating=="NA", NA, composite_rating)) %>% 
+  rename(committed = school, class = year) %>% 
+  select(link, everything())
+```
+
+# Data Export
+
+Export the output dataframe to a csv file for later use
+```{r}
+path <- paste0(getwd(), "/data/")
+write_csv(output, file.path(path, "247-team-commit.csv"))
+```
