@@ -1,0 +1,130 @@
+---
+title: "247-player-scraper"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# Overview
+
+This notebook collects player news data from the 247 player pages. The point of this data is to generate offer and visit features for players in our commit likelihood modeling dataset. 
+
+# Data Collection
+
+Load relevant packages
+```{r}
+library(foreach)
+library(doParallel)
+library(tidyverse)
+library(rvest)
+```
+
+Set up parallelization
+```{r warning = FALSE}
+myCluster <- makeCluster(detectCores()-1, type = "PSOCK")
+registerDoParallel(myCluster)
+```
+
+Function to get the first page of a player's timeline events
+```{r}
+single_timeline <- function(page) {
+  # get a single events html data
+  event <- page %>% html_nodes(".timeline-event-index_lst li")
+  # get the image (later joined to identify the school of interest for that event)
+  image <- event %>% html_element("img") %>% html_attr("src") %>% str_split("\\?") %>% lapply(`[`, 1) %>% unlist()
+  # get the headline and news blurb for that event
+  info <- event %>% html_text2() %>% str_split("\n\n")
+  # get the headline text
+  headline <- lapply(info, `[`, 1) %>% unlist()
+  # get the news blurb text
+  news <- lapply(info, `[`, 2) %>% unlist()
+  # get the link for the next page of player events
+  next_page <- page %>% html_node(".pagn_next") %>% html_attr("href")
+  
+  # combine the image, headline, and news for the player into a dataframe
+  player_df <- cbind(image, headline, news) %>% as.data.frame()
+  # combine the player dataframe and the next page link into a list, this will be the output
+  output_list <- list(player_df, next_page)
+  #return the output list
+  return(output_list)
+}
+```
+
+Function to get the full timeline (past the first page of events) for a given player
+```{r}
+full_timeline <- function(url) {
+  # initialize the player events url
+  url_read <- paste0(url, "/TimelineEvents/")
+  # read the url
+  page_read <- read_html(url_read)
+  # run the single_timeline function to get the player's first page of events
+  player_list <- single_timeline(page_read)
+  
+  # save the events dataframe for player
+  player_df <- player_list[[1]]
+  # save the next page link for player (it will be na if there are no additional pages of events)
+  next_page <- player_list[[2]]
+  
+  # loop as long as there is a next page of events
+  while(!is.na(next_page)) {
+    # update the url to be read as the url for the next page
+    url_read_updated <- paste0(url_read, next_page)
+    # read in the data for next page
+    page_read_updated <- read_html(url_read_updated)
+    # run the single_timeline function on the next page
+    player_list_updated <- single_timeline(page_read_updated)
+    
+    # append data for next page events to the player dataframe
+    player_df <- rbind(player_df, player_list_updated[[1]])
+    # update the next page to be the new next page link
+    next_page <- player_list_updated[[2]]
+    # process repeats until there are no longer any more next pages
+  }
+  
+  # repeat the url as many times as there is rows of data for the player of interest
+  link <- rep(url, nrow(player_df))
+  # concatenate the repeated player link to the player dataframe and save as output df
+  output_df <- cbind(link, player_df) %>% as.data.frame()
+  # return the output dataframe
+  return(output_df)
+}
+```
+
+Parallel implementation with time check
+```{r}
+system.time({
+  # initialize the data for players to be included and save unique player links to be looped over
+  data <- read_csv("data/247-team-offer.csv")
+  links <- data$link %>% unique()
+  
+  #run loop parallelized on several clusters and save into dataframe
+  all_df <- foreach (p = links, .combine = "rbind", .packages = c("tidyverse", "rvest")) %dopar%
+    full_timeline(url = p) 
+})
+```
+
+Stop cluster
+```{r}
+stopCluster(myCluster)
+```
+
+Show which headlines do not have any news blurb associated (the image links will allow us to see which schools a headline is about)
+```{r}
+all_df[rowSums(is.na(all_df)) > 0,]
+```
+
+Save into output dataframe
+```{r}
+output <- all_df
+```
+
+# Data Export
+
+Export the output dataframe to a csv file for later use
+```{r}
+path <- paste0(getwd(), "/data/")
+write_csv(output, file.path(path, "247-player.csv"))
+```
+
